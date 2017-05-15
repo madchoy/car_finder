@@ -1,0 +1,3 @@
+- script to create database
+- bootstrap for creating tables in database
+- conneciton manager to database

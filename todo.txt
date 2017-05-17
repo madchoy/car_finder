@@ -1,3 +1,5 @@
 - script to create database
 - bootstrap for creating tables in database
 - conneciton manager to database
+- write unit tests for parsing listing
+- write unit tests for parsing fields

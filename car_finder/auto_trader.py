@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import json
 
+from decimal import Decimal
 from requests.models import Request
 
 # list = ''
@@ -67,18 +68,36 @@ from requests.models import Request
 #             list += line
 from car_finder.car import Car
 
-class CarFields(object)
-interesting_fields = ['Kilometres',
-                      'Style/Trim',
-                      'Body Type',
-                      'Engine',
-                      'Transmission',
-                      'Exterior Colour']
+class CarField(object):
+    def __init__(self, name, convert=None):
+        self.__name = name
+        self.__convert = convert
+
+    @property
+    def name(self):
+        return self.__name
+
+    def __cmp__(self, other):
+        return self.__name == other
+
+
+
+
+
+interesting_fields = [
+                      CarField('Kilometres', convert = Decimal),
+                      CarField('Style/Trim'),
+                      CarField('Body Type'),
+                      CarField('Engine'),
+                      CarField('Transmission'),
+                      CarField('Exterior Colour'),
+                      ]
 
 class AutoTrader(object):
     def parse_car(self, car_file):
         car = Car()
         soup = BeautifulSoup(car_file)
+        print (soup.findAll('div',{'class':'currentPrice'})[0].string)
         spec_list_div = soup.findAll('div', {'class': 'specList'})[0]
         for div in spec_list_div.findAll('div', {'class': 'at_row'}):
             # print (div)

@@ -1,3 +1,6 @@
+import re
+from enum import Enum
+
 import requests
 from bs4 import BeautifulSoup
 import json
@@ -68,43 +71,61 @@ from requests.models import Request
 #             list += line
 from car_finder.car import Car
 
-class CarField(object):
-    def __init__(self, name, convert=None):
-        self.__name = name
-        self.__convert = convert
+def scrape_decimal_from_string(value):
+    string_number = re.sub("[^0-9]", "", value)
+    return Decimal(string_number)
+class CarFields(object):
+    class CarField(object):
+        _fields = {}
+        def __init__(self, attribute_name, field_name, convert = None):
+            self.__attribute_name = attribute_name
+            self.__field_name = field_name
+            self.__convert = convert
+            self._fields[self.__attribute_name]=self
 
-    @property
-    def name(self):
-        return self.__name
+        @property
+        def field_name(self):
+            return self.__field_name
 
-    def __cmp__(self, other):
-        return self.__name == other
+        def convert(self, value):
+            if self.__convert:
+                return self.__convert(value)
+            else:
+                return value
 
+    KILOMETRES = CarField('Kilometres', 'kilometers', convert = scrape_decimal_from_string)
+    STYLE_TRIM = CarField('Style/Trim', 'trim')
+    BODY_TYPE = CarField('Body Type', 'type')
+    ENGINE = CarField('Engine', 'engine')
+    TRANSMISSION = CarField('Transmission', 'transmission')
+    EXTERIOR_COLOUR = CarField('Exterior Colour', 'colour')
 
+    __car_fields = CarField._fields
+    del CarField._fields
 
-
-
-interesting_fields = [
-                      CarField('Kilometres', convert = Decimal),
-                      CarField('Style/Trim'),
-                      CarField('Body Type'),
-                      CarField('Engine'),
-                      CarField('Transmission'),
-                      CarField('Exterior Colour'),
-                      ]
+    @classmethod
+    def get_car_field(cls, attribute_name):
+        try:
+            return cls.__car_fields[attribute_name]
+        except KeyError:
+            pass
+        return None
 
 class AutoTrader(object):
     def parse_car(self, car_file):
         car = Car()
         soup = BeautifulSoup(car_file)
-        print (soup.findAll('div',{'class':'currentPrice'})[0].string)
+        current_price_string = (soup.findAll('div',{'class':'currentPrice'})[0].text)
+        price = Decimal((current_price_string.replace('Current Price','').replace(',','').replace('$','').strip()))
+        print (price)
+        car.selling_price = price
         spec_list_div = soup.findAll('div', {'class': 'specList'})[0]
         for div in spec_list_div.findAll('div', {'class': 'at_row'}):
-            # print (div)
             title_div = div.findAll('div', {'class': 'at_title at_col '})[0]
             title = (title_div.findAll('span')[0].string)
-            if title in interesting_fields:
+            car_field = CarFields.get_car_field(title)
+            if car_field:
                 value_div = div.findAll('div', {'class': 'at_value at_col'})[0]
-                print(value_div.string)
+                setattr(car, car_field.field_name, car_field.convert(value_div.string))
 
-
+        return car
